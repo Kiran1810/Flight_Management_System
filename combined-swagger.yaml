@@ -1,0 +1,796 @@
+openapi: 3.0.0
+info:
+  title: Flight Booking System - Combined API Documentation
+  version: 1.0.0
+  description: |
+    Comprehensive API documentation for the Flight Booking Microservices System.
+    
+    This documentation combines all microservices:
+    - API Gateway (User Authentication & Management)
+    - Flight Service (Flights, Airplanes, Airports, Cities)
+    - Booking Service (Bookings & Payments)
+    - Notification Service (Info & Tickets)
+    
+    ## Architecture
+    
+    The system is built with a microservices architecture where:
+    - **API Gateway** (Port 3006): Entry point for user authentication and management
+    - **Flight Service** (Port 5000): Manages flight-related data
+    - **Booking Service** (Port 4000): Handles flight bookings and payments  
+    - **Notification Service** (Port 3002): Manages notifications and tickets
+    
+  contact:
+    name: Flight Booking API Support
+    email: support@flightbooking.com
+
+servers:
+  - url: http://localhost:3006
+    description: API Gateway (Main Entry Point)
+  - url: http://localhost:5000/api/v1
+    description: Flight Service
+  - url: http://localhost:4000
+    description: Booking Service
+  - url: http://localhost:3002/api
+    description: Notification Service
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: User Management
+    description: User management operations
+  - name: Flights
+    description: Flight management operations
+  - name: Airplanes
+    description: Airplane management operations
+  - name: Airports
+    description: Airport management operations
+  - name: Cities
+    description: City management operations
+  - name: Bookings
+    description: Flight booking operations
+  - name: Payments
+    description: Payment processing operations
+  - name: Notifications
+    description: Notification and ticket services
+  - name: System Info
+    description: System information endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authenticated requests
+  
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    Flight:
+      type: object
+      properties:
+        id:
+          type: integer
+        flightNumber:
+          type: string
+        airplaneId:
+          type: integer
+        departureAirportId:
+          type: string
+        arrivalAirportId:
+          type: string
+        departureTime:
+          type: string
+          format: date-time
+        arrivalTime:
+          type: string
+          format: date-time
+        price:
+          type: number
+        boardingGate:
+          type: string
+        totalSeats:
+          type: integer
+    
+    Airplane:
+      type: object
+      properties:
+        id:
+          type: integer
+        modelNumber:
+          type: string
+        capacity:
+          type: integer
+    
+    City:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        flightId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum: [booked, cancelled, initiated, pending]
+        noOfSeats:
+          type: integer
+        totalCost:
+          type: integer
+    
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+        subject:
+          type: string
+        content:
+          type: string
+        RecepientEmail:
+          type: string
+        status:
+          type: string
+    
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        statusCode:
+          type: integer
+
+paths:
+  # ==========================================
+  # API GATEWAY - AUTHENTICATION & USER MANAGEMENT
+  # ==========================================
+  /api/v1/user/signup:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      description: Create a new user account in the system
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  example: "password123"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/signin:
+    post:
+      tags: [Authentication]
+      summary: Login a user
+      description: Authenticate user and return JWT token
+      operationId: signin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: User logged in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  token:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user/role:
+    post:
+      tags: [User Management]
+      summary: Assign a role to a user
+      description: Assign admin or other roles to users (Admin only)
+      operationId: assignRole
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Role assigned successfully
+        '403':
+          description: Forbidden - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/user:
+    get:
+      tags: [User Management]
+      summary: Get all users
+      description: Retrieve a list of all registered users
+      operationId: getAllUsers
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+  /api/v1/user/{id}:
+    get:
+      tags: [User Management]
+      summary: Get user by ID
+      description: Retrieve a specific user by their ID
+      operationId: getUserById
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: The user ID
+      responses:
+        '200':
+          description: User data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==========================================
+  # FLIGHT SERVICE - FLIGHTS
+  # ==========================================
+  /flights:
+    post:
+      tags: [Flights]
+      summary: Create a new flight
+      description: Add a new flight to the system
+      operationId: createFlight
+      servers:
+        - url: http://localhost:5000/api/v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - flightNumber
+                - airplaneId
+                - departureAirportId
+                - arrivalAirportId
+                - departureTime
+                - arrivalTime
+                - price
+                - totalSeats
+              properties:
+                flightNumber:
+                  type: string
+                  example: "AI101"
+                airplaneId:
+                  type: integer
+                  example: 1
+                departureAirportId:
+                  type: string
+                  example: "DEL"
+                arrivalAirportId:
+                  type: string
+                  example: "BOM"
+                departureTime:
+                  type: string
+                  format: date-time
+                  example: "2024-01-15T10:00:00Z"
+                arrivalTime:
+                  type: string
+                  format: date-time
+                  example: "2024-01-15T12:30:00Z"
+                price:
+                  type: number
+                  example: 5500.50
+                boardingGate:
+                  type: string
+                  example: "A12"
+                totalSeats:
+                  type: integer
+                  example: 180
+      responses:
+        '201':
+          description: Flight created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Flight'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Flights]
+      summary: Get all flights
+      description: Retrieve a list of all available flights
+      operationId: getAllFlights
+      servers:
+        - url: http://localhost:5000/api/v1
+      responses:
+        '200':
+          description: List of all flights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Flight'
+
+  /flights/{id}:
+    get:
+      tags: [Flights]
+      summary: Get flight by ID
+      description: Retrieve details of a specific flight
+      operationId: getFlightById
+      servers:
+        - url: http://localhost:5000/api/v1
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Flight ID
+      responses:
+        '200':
+          description: Flight details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Flight'
+        '404':
+          description: Flight not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /flights/{id}/seats:
+    patch:
+      tags: [Flights]
+      summary: Update available seats in a flight
+      description: Modify the number of available seats for a specific flight
+      operationId: updateFlightSeats
+      servers:
+        - url: http://localhost:5000/api/v1
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: Flight ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - seats
+              properties:
+                seats:
+                  type: integer
+                  example: 150
+                  description: Number of available seats
+      responses:
+        '200':
+          description: Seats updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '404':
+          description: Flight not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==========================================
+  # FLIGHT SERVICE - AIRPLANES
+  # ==========================================
+  /airplanes:
+    post:
+      tags: [Airplanes]
+      summary: Create a new airplane
+      description: Add a new airplane to the fleet
+      operationId: createAirplane
+      servers:
+        - url: http://localhost:5000/api/v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - modelNumber
+                - capacity
+              properties:
+                modelNumber:
+                  type: string
+                  example: "Boeing 737-800"
+                capacity:
+                  type: integer
+                  example: 180
+      responses:
+        '201':
+          description: Airplane created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Airplane'
+
+    get:
+      tags: [Airplanes]
+      summary: Get all airplanes
+      description: Retrieve a list of all airplanes in the fleet
+      operationId: getAllAirplanes
+      servers:
+        - url: http://localhost:5000/api/v1
+      responses:
+        '200':
+          description: List of airplanes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Airplane'
+
+  # ==========================================
+  # FLIGHT SERVICE - CITIES
+  # ==========================================
+  /cities:
+    post:
+      tags: [Cities]
+      summary: Create a new city
+      description: Add a new city to the system
+      operationId: createCity
+      servers:
+        - url: http://localhost:5000/api/v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "Mumbai"
+      responses:
+        '201':
+          description: City created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/City'
+
+  # ==========================================
+  # BOOKING SERVICE
+  # ==========================================
+  /api/v1/booking:
+    post:
+      tags: [Bookings]
+      summary: Create a new flight booking
+      description: Book a flight for a user
+      operationId: createBooking
+      servers:
+        - url: http://localhost:4000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - flightId
+                - userId
+                - status
+                - noOfSeats
+                - totalCost
+              properties:
+                flightId:
+                  type: string
+                  example: "1"
+                userId:
+                  type: string
+                  example: "1"
+                status:
+                  type: string
+                  enum: [booked, cancelled, initiated, pending]
+                  example: "initiated"
+                noOfSeats:
+                  type: integer
+                  example: 2
+                totalCost:
+                  type: integer
+                  example: 11000
+      responses:
+        '200':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '400':
+          description: Invalid booking data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/booking/payments:
+    post:
+      tags: [Payments]
+      summary: Make a payment for a booking
+      description: Process payment for a flight booking
+      operationId: makePayment
+      servers:
+        - url: http://localhost:4000
+      parameters:
+        - in: header
+          name: x-idempotency-key
+          required: true
+          schema:
+            type: string
+          description: Unique key to ensure idempotent payment
+          example: "payment-123456"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - totalCost
+                - userId
+                - bookingId
+              properties:
+                totalCost:
+                  type: number
+                  example: 11000.50
+                userId:
+                  type: string
+                  example: "1"
+                bookingId:
+                  type: string
+                  example: "booking-123"
+      responses:
+        '200':
+          description: Payment processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  paymentId:
+                    type: string
+        '400':
+          description: Payment failed or bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==========================================
+  # NOTIFICATION SERVICE
+  # ==========================================
+  /v1/info:
+    get:
+      tags: [System Info]
+      summary: Get system information
+      description: Retrieve general system information
+      operationId: getInfo
+      servers:
+        - url: http://localhost:3002/api
+      responses:
+        '200':
+          description: System information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /v1/ticket:
+    post:
+      tags: [Notifications]
+      summary: Create a notification ticket
+      description: Send a notification or create a ticket
+      operationId: createTicket
+      servers:
+        - url: http://localhost:3002/api
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subject
+                - content
+                - RecepientEmail
+              properties:
+                subject:
+                  type: string
+                  example: "Flight Booking Confirmation"
+                content:
+                  type: string
+                  example: "Your flight has been successfully booked."
+                RecepientEmail:
+                  type: string
+                  format: email
+                  example: "customer@example.com"
+                status:
+                  type: string
+                  example: "pending"
+      responses:
+        '201':
+          description: Ticket created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Ticket'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

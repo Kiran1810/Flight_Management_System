@@ -1,0 +1,30 @@
+{
+  "name": "flight-booking-combined-docs",
+  "version": "1.0.0",
+  "description": "Combined API documentation for Flight Booking Microservices System",
+  "main": "combined-swagger.js",
+  "scripts": {
+    "start": "node simple-docs.js",
+    "old": "node combined-swagger.js",
+    "dev": "nodemon simple-docs.js",
+    "test": "node simple-docs.js"
+  },
+  "keywords": [
+    "swagger",
+    "openapi",
+    "api-documentation",
+    "microservices",
+    "flight-booking"
+  ],
+  "author": "Flight Booking Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "swagger-ui-express": "^4.6.3",
+    "yamljs": "^0.3.0",
+    "http-proxy-middleware": "^2.0.6"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

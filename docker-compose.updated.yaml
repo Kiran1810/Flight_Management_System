@@ -1,0 +1,150 @@
+version: "3.8"
+
+networks:
+  flight-booking-net:
+    driver: bridge
+
+volumes:
+  api-gateway-node-modules:
+  booking-service-node-modules:
+  notification-node-modules:
+  flight-service-node-modules:
+  docs-node-modules:
+
+services:
+
+  # Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   
+      - "15672:15672"  # Management UI
+    networks:
+      - flight-booking-net
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway Service (User Authentication & Management)
+  api-gateway:
+    build: ./apigateway
+    container_name: api-gateway
+    depends_on:
+      - rabbitmq
+    networks:
+      - flight-booking-net
+    ports:
+      - "3006:3006"
+    volumes:
+      - ./apigateway:/app
+      - api-gateway-node-modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3006
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Flight Service (Flights, Airplanes, Airports, Cities)
+  flight-service:
+    build: ./flight_service
+    container_name: flight-service
+    depends_on:
+      - rabbitmq
+    networks:
+      - flight-booking-net
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./flight_service:/app
+      - flight-service-node-modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Booking Service (Bookings & Payments)
+  booking-service:
+    build: ./booking_service
+    container_name: booking-service
+    depends_on:
+      - rabbitmq
+      - flight-service
+    networks:
+      - flight-booking-net
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./booking_service:/app
+      - booking-service-node-modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - FLIGHT_SERVICE_URL=http://flight-service:5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Notification Service (Notifications & Tickets)
+  notification-service:
+    build: ./noti
+    container_name: notification-service
+    depends_on:
+      - rabbitmq
+    networks:
+      - flight-booking-net
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./noti:/app
+      - notification-node-modules:/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+    env_file:              
+      - ./noti/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Combined API Documentation Service
+  api-docs:
+    build: .
+    container_name: api-docs
+    depends_on:
+      - api-gateway
+      - flight-service
+      - booking-service
+      - notification-service
+    networks:
+      - flight-booking-net
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - docs-node-modules:/app/node_modules
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
