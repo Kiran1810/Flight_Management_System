@@ -75,7 +75,7 @@ Once deployed, you'll have:
 ## 📂 Key Files
 
 - `combined-swagger.yaml` - All your API definitions
-- `combined-swagger.js` - Simple server (same style as your individual services)
+- `combined-swagger.js` - Simple server (same style as your individual services) 
 - `RENDER_DEPLOY.md` - Step-by-step deployment guide
 
 That's it! Keep it simple, deploy on Render, and your documentation will work perfectly with your live services! 🎉
