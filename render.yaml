@@ -1,0 +1,131 @@
+
+services:
+  # ===================================
+  # API GATEWAY (Authentication Service)
+  # ===================================
+  - type: web
+    name: flight-api-gateway
+    env: docker
+    plan: free
+    region: oregon
+    autoDeploy: true
+    dockerContext: ./apigateway
+    dockerfilePath: ./apigateway/Dockerfile
+    envVars:
+      - key: PORT
+      - key: NODE_ENV
+      - key: JWT_SECRET_KEY
+      - key: EXPIRES_IN
+      - key: DB_HOST
+      - key: DB_USER
+      - key: DB_PASSWORD
+      - key: DB_NAME
+      - key: BCRYPT_SALT_ROUNDS
+
+  # ===================================
+  # FLIGHT SERVICE 
+  # ===================================
+  - type: web
+    name: flight-service
+    env: docker
+    plan: free
+    region: oregon
+    autoDeploy: true
+    dockerContext: ./flight_service
+    dockerfilePath: ./flight_service/Dockerfile
+    envVars:
+      - key: PORT
+      - key: NODE_ENV
+      - key: DB_HOST
+      - key: DB_USER
+      - key: DB_PASSWORD
+      - key: DB_NAME
+
+  # ===================================
+  # BOOKING SERVICE
+  # ===================================
+  - type: web
+    name: flight-booking-service
+    env: docker
+    plan: free
+    region: oregon
+    autoDeploy: true
+    dockerContext: ./booking_service
+    dockerfilePath: ./booking_service/Dockerfile
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: NODE_ENV
+        value: production
+      - key: FLIGHT_SERVICE
+        fromService:
+          type: web
+          name: flight-service
+          property: host
+      - key: USER_SERVICE
+        fromService:
+          type: web
+          name: flight-api-gateway
+          property: host
+      - key: RABBIT_MQ_SERVICE
+      - key: DB_HOST
+      - key: DB_USER
+      - key: DB_PASSWORD
+      - key: DB_NAME
+
+  # ===================================
+  # NOTIFICATION SERVICE
+  # ===================================
+  - type: web
+    name: flight-notification-service
+    env: docker
+    plan: free
+    region: oregon
+    autoDeploy: true
+    dockerContext: ./noti
+    dockerfilePath: ./noti/Dockerfile
+    envVars:
+      - key: PORT
+      - key: NODE_ENV
+      - key: GMAIL_EMAIL
+      - key: GMAIL_PASSWORD
+      - key: RABBIT_MQ_SERVICE
+      - key: DB_HOST
+      - key: DB_USER
+      - key: DB_PASSWORD
+      - key: DB_NAME
+
+  # ===================================
+  # COMBINED API DOCUMENTATION
+  # ===================================
+  - type: web
+    name: flight-api-docs
+    env: docker
+    plan: free
+    region: oregon
+    autoDeploy: true
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+      - key: NODE_ENV
+      - key: API_GATEWAY_URL
+        fromService:
+          type: web
+          name: flight-api-gateway
+          property: host
+      - key: FLIGHT_SERVICE_URL
+        fromService:
+          type: web
+          name: flight-service
+          property: host
+      - key: BOOKING_SERVICE_URL
+        fromService:
+          type: web
+          name: flight-booking-service
+          property: host
+      - key: NOTIFICATION_SERVICE_URL
+        fromService:
+          type: web
+          name: flight-notification-service
+          property: host

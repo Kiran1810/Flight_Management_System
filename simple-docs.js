@@ -3,7 +3,13 @@ const swaggerUi = require('swagger-ui-express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
+
+// Environment variables for deployed service URLs (Render URLs)
+const API_GATEWAY_URL = process.env.API_GATEWAY_URL || 'http://localhost:3006';
+const FLIGHT_SERVICE_URL = process.env.FLIGHT_SERVICE_URL || 'http://localhost:5000';
+const BOOKING_SERVICE_URL = process.env.BOOKING_SERVICE_URL || 'http://localhost:4000';
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3002';
 
 // Simple CORS fix
 app.use((req, res, next) => {
@@ -15,45 +21,45 @@ app.use((req, res, next) => {
 
 // Smart proxy - route to correct services
 app.use('/api', createProxyMiddleware({
-  target: 'http://localhost:3006', // default
+  target: API_GATEWAY_URL,
   changeOrigin: true,
   router: (req) => {
     const path = req.path;
     
-    // API Gateway (port 3006) - User authentication & management
+    // API Gateway - User authentication & management
     if (path.startsWith('/api/v1/user')) {
-      return 'http://localhost:3006';
+      return API_GATEWAY_URL;
     }
     
-    // Booking Service (port 4000) - Bookings & payments
+    // Booking Service - Bookings & payments
     if (path.startsWith('/api/v1/booking')) {
-      return 'http://localhost:4000';
+      return BOOKING_SERVICE_URL;
     }
     
-    // Flight Service (port 5000) - Flights, airplanes, airports, cities, info
+    // Flight Service - Flights, airplanes, airports, cities, info
     if (path.startsWith('/api/v1/flights') || 
         path.startsWith('/api/v1/airplanes') || 
         path.startsWith('/api/v1/airports') ||
         path.startsWith('/api/v1/cities') ||
         path.startsWith('/api/v1/info')) {
-      return 'http://localhost:5000';
+      return FLIGHT_SERVICE_URL;
     }
     
-    // Notification Service (port 3002) - Tickets, notifications  
+    // Notification Service - Tickets, notifications  
     if (path.startsWith('/api/v1/ticket') || 
         path.startsWith('/api/v1/info-noti')) {
-      return 'http://localhost:3002';
+      return NOTIFICATION_SERVICE_URL;
     }
     
     // Default to API Gateway
-    return 'http://localhost:3006';
+    return API_GATEWAY_URL;
   },
   onError: (err, req, res) => {
     console.log(`❌ Service error for ${req.path}:`, err.message);
     res.status(502).json({ 
       error: 'Service unavailable', 
       path: req.path,
-      message: 'Make sure the service is running'
+      message: 'Service is down or unreachable'
     });
   }
 }));
@@ -67,7 +73,7 @@ const swaggerSpec = {
     description: 'All your microservice APIs in one place - ready for testing!'
   },
   servers: [
-    { url: 'http://localhost:3001', description: 'All Services (Auto-routed)' }
+    { url: process.env.NODE_ENV === 'production' ? 'https://your-combined-docs.onrender.com' : 'http://localhost:3001', description: 'All Services (Auto-routed)' }
   ],
   components: {
     securitySchemes: {
@@ -84,7 +90,7 @@ const swaggerSpec = {
     // ===================================
     '/api/v1/user/signup': {
       post: {
-        tags: [' Authentication'],
+        tags: ['🔐 Authentication'],
         summary: 'Register New User',
         requestBody: {
           required: true,
@@ -109,7 +115,7 @@ const swaggerSpec = {
     },
     '/api/v1/user/signin': {
       post: {
-        tags: [' Authentication'],
+        tags: ['🔐 Authentication'],
         summary: 'User Login',
         requestBody: {
           required: true,
@@ -134,7 +140,7 @@ const swaggerSpec = {
     },
     '/api/v1/user/role': {
       post: {
-        tags: [' Authentication'],
+        tags: ['🔐 Authentication'],
         summary: 'Assign User Role (Admin only)',
         security: [{ bearerAuth: [] }],
         responses: { 
@@ -145,14 +151,14 @@ const swaggerSpec = {
     },
     '/api/v1/user': {
       get: {
-        tags: ['User Management'],
+        tags: ['👥 User Management'],
         summary: 'Get All Users',
         responses: { '200': { description: 'List of users' } }
       }
     },
     '/api/v1/user/{id}': {
       get: {
-        tags: ['User Management'],
+        tags: ['👥 User Management'],
         summary: 'Get User by ID',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -165,27 +171,16 @@ const swaggerSpec = {
     },
 
     // ===================================
-    // FLIGHT SERVICE - SYSTEM INFO
-    // ===================================
-    '/api/v1/info': {
-      get: {
-        tags: [' System Info'],
-        summary: 'Get Flight Service Info',
-        responses: { '200': { description: 'Service information' } }
-      }
-    },
-
-    // ===================================
     // FLIGHT SERVICE - FLIGHTS
     // ===================================
     '/api/v1/flights': {
       get: {
-        tags: ['Flights'],
+        tags: ['✈️ Flights'],
         summary: 'Get All Flights',
         responses: { '200': { description: 'List of all flights' } }
       },
       post: {
-        tags: ['Flights'],
+        tags: ['✈️ Flights'],
         summary: 'Create New Flight',
         requestBody: {
           required: true,
@@ -217,7 +212,7 @@ const swaggerSpec = {
     },
     '/api/v1/flights/{id}': {
       get: {
-        tags: ['Flights'],
+        tags: ['✈️ Flights'],
         summary: 'Get Flight by ID',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -230,7 +225,7 @@ const swaggerSpec = {
     },
     '/api/v1/flights/{id}/seats': {
       patch: {
-        tags: ['Flights'],
+        tags: ['✈️ Flights'],
         summary: 'Update Flight Seats',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -261,12 +256,12 @@ const swaggerSpec = {
     // ===================================
     '/api/v1/airplanes': {
       get: {
-        tags: ['Airplanes'],
+        tags: ['🛩️ Airplanes'],
         summary: 'Get All Airplanes',
         responses: { '200': { description: 'List of airplanes' } }
       },
       post: {
-        tags: ['Airplanes'],
+        tags: ['🛩️ Airplanes'],
         summary: 'Create New Airplane',
         requestBody: {
           required: true,
@@ -291,7 +286,7 @@ const swaggerSpec = {
     },
     '/api/v1/airplanes/{id}': {
       get: {
-        tags: ['Airplanes'],
+        tags: ['🛩️ Airplanes'],
         summary: 'Get Airplane by ID',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -302,7 +297,7 @@ const swaggerSpec = {
         }
       },
       delete: {
-        tags: ['Airplanes'],
+        tags: ['🛩️ Airplanes'],
         summary: 'Delete Airplane',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -319,12 +314,12 @@ const swaggerSpec = {
     // ===================================
     '/api/v1/airports': {
       get: {
-        tags: ['Airports'],
+        tags: ['🏢 Airports'],
         summary: 'Get All Airports',
         responses: { '200': { description: 'List of airports' } }
       },
       post: {
-        tags: ['Airports'],
+        tags: ['🏢 Airports'],
         summary: 'Create New Airport',
         requestBody: {
           required: true,
@@ -351,7 +346,7 @@ const swaggerSpec = {
     },
     '/api/v1/airports/{id}': {
       get: {
-        tags: ['Airports'],
+        tags: ['🏢 Airports'],
         summary: 'Get Airport by ID',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -362,7 +357,7 @@ const swaggerSpec = {
         }
       },
       delete: {
-        tags: ['Airports'],
+        tags: ['🏢 Airports'],
         summary: 'Delete Airport',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -379,7 +374,7 @@ const swaggerSpec = {
     // ===================================
     '/api/v1/cities': {
       post: {
-        tags: ['Cities'],
+        tags: ['🏙️ Cities'],
         summary: 'Create New City',
         requestBody: {
           required: true,
@@ -403,7 +398,7 @@ const swaggerSpec = {
     },
     '/api/v1/cities/{id}': {
       delete: {
-        tags: ['Cities'],
+        tags: ['🏙️ Cities'],
         summary: 'Delete City',
         parameters: [
           { name: 'id', in: 'path', required: true, schema: { type: 'integer' }, example: 1 }
@@ -420,7 +415,7 @@ const swaggerSpec = {
     // ===================================
     '/api/v1/booking': {
       post: {
-        tags: ['Bookings'],
+        tags: ['🎫 Bookings'],
         summary: 'Create Flight Booking',
         requestBody: {
           required: true,
@@ -452,7 +447,7 @@ const swaggerSpec = {
     },
     '/api/v1/booking/payments': {
       post: {
-        tags: ['Payments'],
+        tags: ['💳 Payments'],
         summary: 'Process Payment',
         parameters: [
           { 
@@ -490,16 +485,9 @@ const swaggerSpec = {
     // ===================================
     // NOTIFICATION SERVICE
     // ===================================
-    '/api/v1/info-noti': {
-      get: {
-        tags: ['Notifications'],
-        summary: 'Get Notification Service Info',
-        responses: { '200': { description: 'Service information' } }
-      }
-    },
     '/api/v1/ticket': {
       post: {
-        tags: ['Tickets'],
+        tags: ['🎟️ Tickets'],
         summary: 'Create Notification Ticket',
         requestBody: {
           required: true,
@@ -534,44 +522,36 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'Simple docs running - just start your services and test!'
+    message: 'Combined API Docs - All services available through proxy',
+    services: {
+      'API Gateway': API_GATEWAY_URL,
+      'Flight Service': FLIGHT_SERVICE_URL,
+      'Booking Service': BOOKING_SERVICE_URL,
+      'Notification Service': NOTIFICATION_SERVICE_URL
+    },
+    timestamp: new Date().toISOString()
   });
 });
 
 // Home
 app.get('/', (req, res) => {
   res.json({
-    message: 'Flight Booking - Simple API Testing',
-    docs: 'http://localhost:3001/docs',
-    instructions: [
-      '1. Start your microservices on their usual ports',
-      '2. Visit /docs to test all APIs',
-      '3. All requests automatically route to correct services'
-    ]
+    message: 'Flight Booking System - Complete API Testing Platform',
+    docs: '/docs',
+    health: '/health',
+    deployment: process.env.NODE_ENV || 'development'
   });
 });
 
 app.listen(PORT, () => {
   console.log('🚀 Flight Booking System - Complete API Documentation');
-  console.log('📚 All APIs available at: http://localhost:3001/docs');
+  console.log(`📚 All APIs available at: http://localhost:${PORT}/docs`);
   console.log('');
-  console.log('🔄 Smart routing configured:');
-  console.log('  📍 API Gateway (port 3006): Authentication & User Management');
-  console.log('  📍 Flight Service (port 5000): Flights, Airplanes, Airports, Cities');  
-  console.log('  📍 Booking Service (port 4000): Bookings & Payments');
-  console.log('  📍 Notification Service (port 3002): Tickets & Notifications');
-  console.log('');
-  console.log('📋 Complete API Collection:');
-  console.log('  🔐 Auth: signup, signin, role assignment');
-  console.log('  👥 Users: get all users, get user by ID');
-  console.log('  ✈️  Flights: create, get all, get by ID, update seats');
-  console.log('  🛩️  Airplanes: create, get all, get/delete by ID');
-  console.log('  🏢 Airports: create, get all, get/delete by ID');
-  console.log('  🏙️  Cities: create, delete by ID');
-  console.log('  🎫 Bookings: create flight booking');
-  console.log('  💳 Payments: process payment with idempotency');
-  console.log('  🎟️  Tickets: create notification tickets');
-  console.log('  ℹ️  Info: service status endpoints');
+  console.log('🔄 Proxying to services:');
+  console.log(`  📍 API Gateway: ${API_GATEWAY_URL}`);
+  console.log(`  📍 Flight Service: ${FLIGHT_SERVICE_URL}`);  
+  console.log(`  📍 Booking Service: ${BOOKING_SERVICE_URL}`);
+  console.log(`  📍 Notification Service: ${NOTIFICATION_SERVICE_URL}`);
   console.log('');
   console.log('✅ All "Try it out" buttons work - no CORS issues!');
   console.log('🎉 Ready for testing!');

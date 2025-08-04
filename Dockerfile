@@ -1,5 +1,5 @@
-# Dockerfile for Combined API Documentation
-FROM node:16-alpine
+# Dockerfile for Combined API Documentation Service
+FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
@@ -11,19 +11,17 @@ COPY package*.json ./
 RUN npm install --only=production
 
 # Copy application files
-COPY combined-swagger.yaml .
-COPY combined-swagger.js .
-COPY README.md .
+COPY simple-docs.js .
 
-# Create a non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
 
-# Change ownership of the app directory
+# Change ownership and switch to non-root user
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Expose port
+# Expose the port
 EXPOSE 3001
 
 # Health check

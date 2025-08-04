@@ -5,9 +5,11 @@
   "main": "combined-swagger.js",
   "scripts": {
     "start": "node simple-docs.js",
-    "old": "node combined-swagger.js",
     "dev": "nodemon simple-docs.js",
-    "test": "node simple-docs.js"
+    "test": "node simple-docs.js",
+    "convert-config": "node convert-config.js",
+    "deploy-prep": "npm run convert-config && echo 'Ready for deployment! Check DEPLOYMENT_GUIDE.md'",
+    "old": "node combined-swagger.js"
   },
   "keywords": [
     "swagger",
